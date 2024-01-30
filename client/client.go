@@ -17,6 +17,7 @@ func main() {
 		log.Fatalf("Failed to connect to server: %v", err)
 	}
 	defer conn.Close()
+	log.Println("请在最前面添加 'gemini:' 来询问 Google AI gemini")
 
 	done := make(chan struct{})
 

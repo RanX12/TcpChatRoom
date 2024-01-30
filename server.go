@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type User struct {
@@ -30,6 +34,7 @@ var (
 	leavingChannel = make(chan *User)
 	// 广播专用的用户普通消息 channel，缓冲是尽可能避免出现异常情况堵塞，这里简单给了 8，具体值根据情况调整
 	messageChannel = make(chan string, 8)
+	geminiKey      string
 )
 
 func main() {
@@ -39,6 +44,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	// 从本地读取环境变量
+	godotenv.Load()
+
+	geminiKey = os.Getenv("GEMINI_PRO_API_KEY")
+
+	log.Println("服务已启动！")
 
 	go broadcaster()
 
@@ -115,7 +127,12 @@ func handleConn(conn net.Conn) {
 	// 5. 循环读取用户的输入
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
-		messageChannel <- user.NickName + ": " + input.Text()
+		if strings.HasPrefix(input.Text(), "gemini:") {
+			rep := GeminiChatComplete(input.Text())
+			user.MessageChannel <- rep
+		} else {
+			messageChannel <- user.NickName + ": " + input.Text()
+		}
 	}
 
 	if err := input.Err(); err != nil {
